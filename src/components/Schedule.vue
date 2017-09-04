@@ -14,7 +14,7 @@
     <main>
         <ul class="schedule-list">
             <li v-for="(schedule, index) in schedules" v-bind:class="colorList[index%colorList.length]">
-                <div class="schedule-date">{{schedule.dateFormat}}</div>
+                <div class="schedule-date"><div>{{schedule.dateFormat}}</div></div>
                 <ul v-if="schedule.list" class="schedule-content">
                     <li v-for="item in schedule.list">
                         <div class="content-title">
@@ -34,10 +34,11 @@
     </main>
     <footer>
         <div class="left-menu">
-
+            <!-- <button class="fa fa-chevron-circle-left" aria-hidden="true"></button> -->
         </div>
         <div class="right-menu">
-
+            <button class="fa fa-refresh" aria-hidden="true" @click="refreshSchdule"></button>
+            <!-- <button class="fa fa-chevron-circle-right" aria-hidden="true"></button> -->
         </div>
     </footer>
 </div>
@@ -48,7 +49,8 @@ export default {
   name: 'schedule',
   data () {
     var now = new Date(),
-        current = new Date();
+        current = new Date(),
+        currentSchedule = 0;
     var header = {
         title:now.Format("MM.dd"),
         prev:{
@@ -60,6 +62,7 @@ export default {
                 header.prev.text = now-current==0?"昨天":new Date((current.getTime() - 24 * 60 * 60 * 1000)).Format("MM.dd");
                 header.next.text = now-current==0?"明天":new Date((current.getTime() + 24 * 60 * 60 * 1000)).Format("MM.dd");
                 header.title = current.Format("MM.dd");
+                setScheduleDate(current)
             }
         },
         next:{
@@ -71,6 +74,7 @@ export default {
                 header.prev.text = now-current==0?"昨天":new Date((current.getTime() - 24 * 60 * 60 * 1000)).Format("MM.dd");
                 header.next.text = now-current==0?"明天":new Date((current.getTime() + 24 * 60 * 60 * 1000)).Format("MM.dd");
                 header.title = current.Format("MM.dd");
+                setScheduleDate(current)
             }
         }
     }
@@ -94,7 +98,7 @@ export default {
                             var date = new Date(schedule.date);
                             schedule.date = {
                                 startDate:date,
-                                endDate:new Date(date.getTime() + 24 * 60 * 60 * 1000),
+                                endDate:new Date(date.getTime() + (24 * 60 * 60 * 1000 -1)),
                             }
                             schedule.dateFormat = schedule.date.startDate.Format("MM.dd") + " 周" + "日一二三四五六".split("")[schedule.date.startDate.getDay()];
                             break;
@@ -137,7 +141,7 @@ export default {
                 list.unshift({
                     date:{
                         startDate:now,
-                        endDate:new Date(now.getTime() + 24 * 60 * 60 * 1000)
+                        endDate:new Date(schedule.date.startDate.getTime() - 24 * 60 * 60 * 1000)
                     },
                 })
                 if(schedule.date.startDate - list[0].date.startDate < 24 * 60 * 60 * 1000){
@@ -160,13 +164,49 @@ export default {
         return list;
     })(window.scheduleData || []);
 
-    console.log(schedules)
-    
+    // console.log(schedules)
+    var setScheduleDate = function(date){
+        date = date || new Date();
+        for(var i=0;i<schedules.length;i++){
+            var schedule = schedules[i];
+            if(date >= schedule.date.startDate && date <= schedule.date.endDate){
+                console.log(schedule)
+                var fx = document.querySelectorAll(".schedule-list .fixed");
+                if(fx.length>0){
+                    fx[0].className = "schedule-date";
+                }
+                var sc = document.querySelectorAll(".schedule-list>li")[i];
+                if(i>0){
+                    sc.getElementsByClassName("schedule-date")[0].className = "schedule-date fixed";
+                }
+                window.scrollTo(0,sc.offsetTop - 50)
+            }
+        }
+    }
     return {
         header:header,
-        colorList:["default","red","yellow","orange","blue","purple","green"],
-        schedules:schedules
+        colorList:["default","red","orange","yellow","green","blue","purple"],
+        schedules:schedules,
+        refreshSchdule:function(){setScheduleDate()}
     }
+  },
+  created:function(){
+      window.onscroll = function(){
+        var st = document.documentElement.scrollTop || document.body.scrollTop;
+        // console.log(st)
+        var scList = document.querySelectorAll(".schedule-list>li")
+        for(var i=0;i<scList.length;i++){
+            var sc = scList[i];
+            var sd = sc.getElementsByClassName("schedule-date")[0];
+            sd.className = "schedule-date";
+            var scTop = sc.offsetTop - 51,
+                scHeight = sc.offsetHeight;
+            // console.log(i + " : " + sc.offsetTop)
+            if(st > scTop && st < sc.offsetTop + scHeight){
+                sd.className = "schedule-date fixed";
+            }
+        }
+      }
   }
 }
 </script>
@@ -174,7 +214,7 @@ export default {
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
 #body{
-    
+
 }
 main{
     padding: 51px 0;
@@ -202,6 +242,7 @@ footer,header{
 }
 header{
     top: 0;
+    left: 0;
     background-color: #fff;
     border-bottom: 1px solid #35495e;
     color:#35495e;
@@ -215,7 +256,9 @@ header .title::after{
 }
 footer{
     background-color: #41b883;
+    color: #fff;
     bottom: 0;
+    left:0;
 }
 footer>div,header .title{
     box-flex:1;-webkit-box-flex:1;-moz-box-flex:1;-ms-box-flex:1;
@@ -227,20 +270,43 @@ footer>div.left-menu{
 footer>div.right-menu{
     text-align: right;
 }
+footer button{
+    height: 50px;
+    width: 50px;
+    color: #fff;
+    outline: none;
+    border: none;
+    background-color: #41b883;
+}
+footer>div.left-menu button{
+    border-right: 1px solid #fff;
+}
+footer>div.right-menu button{
+    border-left: 1px solid #fff;
+}
 .schedule-empty{
     padding:10px 20px;
 
 }
 main .schedule-date{
     color: #35495e;
+    background-color: #fff;
+}
+main .schedule-date.fixed{
+    position: fixed;
+    top: 50px;
+    left: 0;
+    width: 100%;
+}
+main .schedule-date div{
     padding-left: 10px;
-    background-color: rgba(65, 184, 131, .2)
+    background-color: rgba(200, 200, 200, .2)
 }
 .schedule-list{
     text-align: left;
 }
 .schedule-list>li{
-    background-color: rgba(65, 184, 131, .05)
+    background-color: rgba(200, 200, 200, .05)
 }
 .schedule-list>li:first-of-type{
     border-top: none;
@@ -303,37 +369,37 @@ main .schedule-date{
 .schedule-content .content-list>li:last-of-type{
     border-bottom: none;
 }
-.schedule-list>li.red .schedule-date{
+.schedule-list>li.red .schedule-date div{
     background-color: rgba(232, 76,61, .2)
 }
 .schedule-list>li.red{
     background-color: rgba(232, 76,61, .05)
 }
-.schedule-list>li.yellow .schedule-date{
+.schedule-list>li.yellow .schedule-date div{
     background-color: rgba(241, 196,15, .2)
 }
 .schedule-list>li.yellow{
     background-color: rgba(241, 196,15, .05)
 }
-.schedule-list>li.orange .schedule-date{
+.schedule-list>li.orange .schedule-date div{
     background-color: rgba(244, 156,20, .2)
 }
 .schedule-list>li.orange{
     background-color: rgba(244, 156,20, .05)
 }
-.schedule-list>li.blue .schedule-date{
+.schedule-list>li.blue .schedule-date div{
     background-color: rgba(84, 213,235, .2)
 }
 .schedule-list>li.blue{
     background-color: rgba(84, 213,235, .05)
 }
-.schedule-list>li.purple .schedule-date{
+.schedule-list>li.purple .schedule-date div{
     background-color: rgba(156, 89,184, .2)
 }
 .schedule-list>li.purple{
     background-color: rgba(156, 89,184, .05)
 }
-.schedule-list>li.green .schedule-date{
+.schedule-list>li.green .schedule-date div{
     background-color: rgba(47, 204,113, .2)
 }
 .schedule-list>li.green{
