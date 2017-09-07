@@ -1,12 +1,12 @@
 <template>
 <div id="body">
     <header>
-        <div class="prev" @click="header.prev.hanldeClick">
+        <div class="prev" @click="header.prev.handleClick">
             <span class="fa fa-angle-left"></span>
             <span>{{header.prev.text}}</span>
         </div>
-        <div class="title">{{header.title}}</div>
-        <div class="next" @click="header.next.hanldeClick">
+        <div class="title" @click="header.handleClick">{{header.title}}</div>
+        <div class="next" @click="header.next.handleClick">
             <span>{{header.next.text}}</span>
             <span class="fa fa-angle-right"></span>
         </div>
@@ -41,6 +41,28 @@
             <!-- <button class="fa fa-chevron-circle-right" aria-hidden="true"></button> -->
         </div>
     </footer>
+    <transition name="fade">
+        <div id="calendar" v-show="calendar.show" v-on:click.stop="calendar.handleClick">
+            <div class="calendar-wrapper" v-on:click.stop="calendar.handleChoose">
+                <div class="calendar-title">
+                    <div>日</div>
+                    <div>一</div>
+                    <div>二</div>
+                    <div>三</div>
+                    <div>四</div>
+                    <div>五</div>
+                    <div>六</div>
+                </div>
+                <ul class="calendar-content">
+                    <li v-for="row in calendar.data">
+                        <div v-for="cell in row" :class="{'active':cell.active,'tody':cell.tody,'disabled':cell.disabled}">
+                            <span v-bind:title="cell.date.Format('yyyy-MM-dd')">{{cell.text}}</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </transition>
 </div>
 </template>
 
@@ -48,33 +70,46 @@
 export default {
   name: 'schedule',
   data () {
-    var now = new Date(),
-        current = new Date(),
-        currentSchedule = 0;
+    var now = new Date(new Date().Format("yyyy-MM-dd")),
+        current = new Date(new Date().Format("yyyy-MM-dd"));
     var header = {
         title:now.Format("MM.dd"),
+        handleClick:function(){
+            calendar.show = "show";
+        },
+        setDate:function(date){
+            current = date || new Date(new Date().Format("yyyy-MM-dd"))
+
+            header.prev.text = now-current==0?"昨天":new Date((current.getTime() - 24 * 60 * 60 * 1000)).Format("MM.dd");
+            header.next.text = now-current==0?"明天":new Date((current.getTime() + 24 * 60 * 60 * 1000)).Format("MM.dd");
+            header.title = current.Format("MM.dd");
+            setScheduleDate(current)
+            calendar.render(current);
+        },
         prev:{
             text:"昨天",
             disable:false,
-            hanldeClick:function(){
+            handleClick:function(){
                 current = new Date(current.getTime() - 24 * 60 * 60 * 1000)
 
                 header.prev.text = now-current==0?"昨天":new Date((current.getTime() - 24 * 60 * 60 * 1000)).Format("MM.dd");
                 header.next.text = now-current==0?"明天":new Date((current.getTime() + 24 * 60 * 60 * 1000)).Format("MM.dd");
                 header.title = current.Format("MM.dd");
                 setScheduleDate(current)
+                calendar.render(current);
             }
         },
         next:{
             text:"明天",
             disable:false,
-            hanldeClick:function(){
+            handleClick:function(){
                 current = new Date(current.getTime() + 24 * 60 * 60 * 1000)
 
                 header.prev.text = now-current==0?"昨天":new Date((current.getTime() - 24 * 60 * 60 * 1000)).Format("MM.dd");
                 header.next.text = now-current==0?"明天":new Date((current.getTime() + 24 * 60 * 60 * 1000)).Format("MM.dd");
                 header.title = current.Format("MM.dd");
                 setScheduleDate(current)
+                calendar.render(current);
             }
         }
     }
@@ -183,11 +218,63 @@ export default {
             }
         }
     }
+    var calendar = {
+        show:"",
+        handleClick:function(){
+            calendar.show = "";
+        },
+        handleChoose:function(event){
+            var date = "";
+            if(event.target.tagName == "SPAN"){
+                date = new Date(event.target.title);
+                header.setDate(date);
+                calendar.show = "";
+            }
+        },
+        data:[],
+        render:function(date){
+            date = date || new Date();
+            var firstDay = new Date(date.Format("yyyy-MM-01 00:00:00"));
+            this.data = [[]];
+            for(var i=0;i<=firstDay.getDay();i++){
+                var data = {date:new Date(firstDay.getTime() - i*24*60*60*1000),active:false,tody:false,disabled:true}
+                data.text = data.date.getDate();
+                this.data[0][data.date.getDay()] = data;
+            }
+            for(;firstDay.getMonth() == date.getMonth();firstDay=new Date(firstDay.getTime() + 24*60*60*1000)){
+                var data = {text:firstDay.getDate(),date:new Date(firstDay.getTime()),active:false,tody:false,disabled:false},
+                    day = firstDay.getDate(),
+                    week = firstDay.getDay();
+                if(firstDay.Format("yyyy-MM-dd") == date.Format("yyyy-MM-dd"))
+                    data.active = true;
+                if(firstDay.Format("yyyy-MM-dd") == now.Format("yyyy-MM-dd"))
+                    data.tody = true;
+                if(day%7 <= week){
+                    if(!this.data[parseInt(day/7)])
+                        this.data[parseInt(day/7)] = [];
+                    this.data[parseInt(day/7)][week] = data
+                }else{
+                    if(!this.data[parseInt(day/7+1)])
+                        this.data[parseInt(day/7+1)] = [];
+                    this.data[parseInt(day/7+1)][week] = data
+                }
+                console.log(this.data)
+            }
+            if(this.data[0].length<7) this.data.shift();
+            if(firstDay.getDay()>0)
+                for(var i=firstDay.getDay();i<=6;i++){
+                    var data = {date:new Date(firstDay.getTime() + (i-firstDay.getDay())*24*60*60*1000),active:false,tody:false,disabled:true}
+                    data.text = data.date.getDate();
+                    this.data[this.data.length-1][data.date.getDay()] = data;
+                }
+        }
+    }
     return {
         header:header,
         colorList:["default","red","orange","yellow","green","blue","purple"],
         schedules:schedules,
-        refreshSchdule:function(){setScheduleDate()}
+        refreshSchdule:function(){setScheduleDate()},
+        calendar:calendar
     }
   },
   created:function(){
@@ -207,7 +294,9 @@ export default {
             }
         }
       }
-  }
+    //   this.refreshSchdule();
+      this.calendar.render();
+    }
 }
 </script>
 
@@ -404,5 +493,85 @@ main .schedule-date div{
 }
 .schedule-list>li.green{
     background-color: rgba(47, 204,113, .05)
+}
+#calendar{
+    position: fixed;
+    top: 51px;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: rgba(0, 0, 0, .6);
+    z-index: 3;
+    overflow: hidden;
+}
+#calendar.fade-enter-active, #calendar.fade-leave-active {
+    transition: all .5s ease
+}
+#calendar.fade-enter /* .fade-leave-active in below version 2.1.8 */ {
+    opacity: 0;
+}
+
+#calendar.fade-leave-to{
+    opacity: 0;
+}
+
+.calendar-wrapper{
+    background-color: #fff;
+    position: relative;
+    top: 0;
+}
+#calendar.fade-enter-active .calendar-wrapper{
+    transition: all .5s ease
+}
+#calendar.fade-enter .calendar-wrapper{
+    top: -200px;
+}
+
+
+.calendar-title{
+    border-bottom: 1px solid #ddd;
+}
+.calendar-title,.calendar-content li{
+    display: box;
+    display: -webkit-box;
+    display: -moz-box;
+    display: -ms-box;
+    display: flex;
+    display: -webkit-flex;
+    display: -moz-flex;
+    display: -ms-flex;
+    box-orient:horizontal;
+    -webkit-box-orient:horizontal;
+    -moz-box-orient:horizontal;
+    -ms-box-orient:horizontal;
+    flex-direction:row;
+    -webkit-flex-direction:row;
+}
+.calendar-title>div,.calendar-content li>div{
+    box-flex:1;-webkit-box-flex:1;-moz-box-flex:1;-ms-box-flex:1;
+    flex:1;-webkit-flex:1;-moz-flex:1;-ms-flex:1;
+    padding: 1% 0;
+}
+.calendar-content li>div span{
+    display: inline-block;
+    height: 30px;
+    line-height: 30px;
+    width: 30px;
+    border-radius: 4px;
+}
+.calendar-content li>div.tody span{
+    
+    color: #41b883;
+    border:1px solid #41b883;
+    height: 29px;
+    line-height: 29px;
+    width: 29px;
+}
+.calendar-content li>div.active span{
+    background-color: #41b883;
+    color: #fff;
+}
+.calendar-content li>div.disabled{
+    color: #aaa;
 }
 </style>
